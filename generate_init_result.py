@@ -46,6 +46,10 @@ from caiman.source_extraction.cnmf.utilities import get_file_size
 #%%    
 # Getting an intialization file by using CaImAn v1.9.13. The current bottleneck is the CaImAn motion correction. 
 def run_caiman_init(fnames, pw_rigid=True, max_shifts=[6, 6], gnb=2, rf=15, K=5, gSig=[4, 4]):
+    current_dir = os.getcwd()
+    for filename in os.listdir(current_dir):
+        if filename.endswith("_caiman_init.hdf5"):
+            return filename
     c, dview, n_processes = cm.cluster.setup_cluster(
         backend='local', n_processes=None, single_thread=False)  # Adjust n_processes as needed
 
@@ -220,7 +224,7 @@ def save_fiola_state(mc_nn_mov, trace_fiola, template, Ab, min_mov, params, file
         'frames_to_process': frames_to_process
     }
     if local:
-        persistent_volume_path = "./persistent_storage"
+        persistent_volume_path = "/persistent_storage"
     else:
         persistent_volume_path = "/persistent_storage"
     os.makedirs(persistent_volume_path, exist_ok=True)
@@ -303,7 +307,7 @@ def caiman_process(fnames, frames_to_process, local):
     #TODO: Fine-tuning the model **Labels** should be send together with frames during initailization
     spike_activity = spikes_reader(caiman_file)
     spike_activity = np.transpose(spike_activity)
-    weights_path = "./persistent_storage/pre_trained_model.h5"
+    weights_path = "/persistent_storage/pre_trained_model.h5"
     window_size = 50
     step_size = 2
     epochs = 20

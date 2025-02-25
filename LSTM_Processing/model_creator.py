@@ -41,10 +41,10 @@ class NeuralSpikeLSTM:
         binary_predictions = (probabilities >= 0.5).astype(int) 
         return binary_predictions
 
-    def save_model(self, file_path="./persistent_storage/pre_trained_model.h5"):
+    def save_model(self, file_path="/persistent_storage/pre_trained_model.h5"):
         self.model.save(file_path)
     @classmethod
-    def load_trained_model(cls, file_path="./persistent_storage/fine_tuned_model.h5"):
+    def load_trained_model(cls, file_path="/persistent_storage/fine_tuned_model.h5"):
         return load_model(file_path)
 
     def fine_tune(self, new_neurons, weights_path):
@@ -146,7 +146,7 @@ def load_and_finetune_model(spike_activity, weights_path, window_size, step_size
     model = NeuralSpikeLSTM(neurons, window_size)
     model.fine_tune(neurons, weights_path) 
     model.train(X, y, epochs=epochs, batch_size=batch_size)
-    fine_tuned_weights_path = "./persistent_storage/fine_tuned_model.h5"
+    fine_tuned_weights_path = "/persistent_storage/fine_tuned_model.h5"
     model.save_model(fine_tuned_weights_path)
     print(f"Fine-tuned model saved to {fine_tuned_weights_path}")
     
