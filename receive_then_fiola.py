@@ -269,7 +269,7 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
         end_time = time()
         total_time = end_time - timestamp / 1000  # Convert timestamp back to seconds
         logging.info(f"Total time spent on frame {frame_idx} (from capture to finish): {total_time}, total time processing is {end_time - proc_time}, buffering time: {buffer_time - start_time}, start to finish: {end_time - start_time}")
-        message = f'Processed frame {frame_idx} with trace sum {np.sum(online_trace)} using {total_time}'
+        message = f'Processed frame {frame_idx} with inference: {prediction[0][0]} using {total_time}'
         if not local:
             await corelink.send(sender_id, message)
       
@@ -310,7 +310,7 @@ async def callback(data_bytes, streamID, header):
             frame_data = b''.join(frame["chunks"])
 
             # Process the frame with the single FIOLA object
-            asyncio.create_task(process_frame_with_buffer(fio_objects[0], frame_data, frame_number, frame["timestamp"], frame["start_time"]))
+            asyncio.create_task(process_frame_with_buffer(fio_objects[0], frame_data, frame_number, frame["timestamp"], frame["start_time"], model = model, local = False))
 
             # Clean up the completed frame entry
             del incoming_frames[frame_number]
@@ -334,7 +334,7 @@ async def dropped(response, key):
     logging.info(f"dropped: {response}")
 
 async def processing():
-    global fio_objects, sender_id
+    global fio_objects, sender_id, model
 
     # Read the latest FIOLA state path
     if os.path.exists(LATEST_FIOLA_STATE_PATH):
@@ -364,7 +364,8 @@ async def processing():
         else:
             logging.error(f"Failed to generate the latest FIOLA state file path at {LATEST_FIOLA_STATE_PATH}")
             sys.exit(1)
-
+   
+    model = NeuralSpikeLSTM.load_trained_model()
     await corelink.set_server_callback(update, 'update')
     await corelink.set_server_callback(stale, 'stale')
     await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
