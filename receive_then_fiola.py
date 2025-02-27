@@ -278,9 +278,10 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
         logging.error(f"Failed to process frame with buffer: {e}", exc_info=True)
 
 async def callback(data_bytes, streamID, header):
+    logging.info(f"callback triggered")
     global incoming_frames
-    if streamID == sender_id:
-        return
+#    if streamID == sender_id:
+ #       return
     # Extract the header information
     timestamp, frame_number, chunk_index, total_chunks = struct.unpack('>QHHH', data_bytes[:HEADER_SIZE])
     chunk_data = data_bytes[HEADER_SIZE:]
@@ -369,7 +370,7 @@ async def processing():
     await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
     await corelink.set_data_callback(callback)
     
-    receiver_id = await corelink.create_receiver("FentonRaw1", "ws", alert=True, echo=False)
+    receiver_id = await corelink.create_receiver("FentonRaw1", "ws", alert=True, echo=True)
     logging.info(f"Receiver ID: {receiver_id}")
     
     logging.info("Start receive process frames")
@@ -378,7 +379,7 @@ async def processing():
     await corelink.set_server_callback(subscriber, 'subscriber')
     await corelink.set_server_callback(dropped, 'dropped')
 
-    await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
+    # await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
     sender_id = await corelink.create_sender("FentonCtl1", "ws", "description1")
 
     try:
