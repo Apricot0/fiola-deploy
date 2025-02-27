@@ -149,7 +149,7 @@ def sync_memmap_from_buffer(tiff_buffer):
         if image_data.size != np.prod(shape):
             logging.error(f"Data array size {image_data.size} does not match expected size {np.prod(shape)}.")
             raise ValueError(f"Data array size {image_data.size} does not match expected size {np.prod(shape)}.")
-        logging.info(f"Successfully memmapped buffer. Shape: {image_data.shape}, dtype: {image_data.dtype}")
+#        logging.info(f"Successfully memmapped buffer. Shape: {image_data.shape}, dtype: {image_data.dtype}")
         return image_data
     except Exception as e:
         logging.error(f"Error processing TIFF buffer: {e}")
@@ -188,11 +188,11 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
         input_data = np.expand_dims(np.transpose(trace_window), axis=0)
         # Use safe_predict with the captured session and graph
         prediction = await loop.run_in_executor(None, safe_predict, model, sess, graph, input_data)
-        logging.info(f"inference: {prediction[0][0]}")
+#        logging.info(f"inference: {prediction[0][0]}")
         new_size = adjusted_frame_idx + batch
         online_trace = np.pad(online_trace, ((0, 0), (0, new_size)), mode='constant', constant_values=0)
         online_trace_deconvolved = np.pad(online_trace_deconvolved, ((0, 0), (0, new_size)), mode='constant', constant_values=0)
-        print(online_trace.shape)
+#        print(online_trace.shape)
         online_trace[:, :batch] = trace_now
         online_trace_deconvolved[:, :batch] = fio.pipeline.saoz.trace_deconvolved[:, adjusted_frame_idx: adjusted_frame_idx + batch]
         end_time = time()
@@ -205,7 +205,7 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
         logging.error(f"Failed to process frame with buffer: {e}", exc_info=True)
 
 async def callback(data_bytes, streamID, header):
-    logging.info("callback triggered")
+#    logging.info("callback triggered")
     global incoming_frames
     timestamp, frame_number, chunk_index, total_chunks = struct.unpack('>QHHH', data_bytes[:HEADER_SIZE])
     chunk_data = data_bytes[HEADER_SIZE:]
@@ -221,11 +221,11 @@ async def callback(data_bytes, streamID, header):
         frame["received_slices"] += 1
         if frame["received_slices"] == total_chunks:
             transmission_time = time() - timestamp / 1000
-            logging.info(f"Frame {frame_number} transmission time: {transmission_time:.6f}s")
+ #           logging.info(f"Frame {frame_number} transmission time: {transmission_time:.6f}s")
             frame_data = b''.join(frame["chunks"])
             asyncio.create_task(process_frame_with_buffer(fio_objects[0], frame_data, frame_number, frame["timestamp"], frame["start_time"], model=model, local=False))
             del incoming_frames[frame_number]
-            logging.info(f"Frame {frame_number} fully received at {arrival_time:.6f}, started processing at {time():.6f}")
+ #           logging.info(f"Frame {frame_number} fully received at {arrival_time:.6f}, started processing at {time():.6f}")
     else:
         logging.info(f"Invalid or duplicate slice index: {chunk_index} for frame: {frame_number}")
 
