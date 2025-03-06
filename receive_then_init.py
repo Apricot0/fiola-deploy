@@ -16,7 +16,7 @@ from PIL import Image
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["TF_XLA_FLAGS"] = "--tf_xla_enable_xla_devices"
 
-HEADER_SIZE = 14  # Updated to include timestamp (8 bytes) + frame number (2 bytes) + chunk index (2 bytes) + total chunks (2 bytes)
+HEADER_SIZE = 22  # Updated to include timestamp (8 bytes) + frame number (2 bytes) + chunk index (2 bytes) + total chunks (2 bytes) + label (8 bytes)
 INACTIVITY_TIMEOUT = 60  # seconds
 FINISHED_INIT = False
 # Configure logging
@@ -40,6 +40,7 @@ incoming_frames = defaultdict(lambda: {
 # List to keep track of sessions
 sessions = []
 current_session_frames = []
+current_session_labels =[]
 current_session_start_time = None
 last_update_time = time()
 
@@ -55,40 +56,40 @@ os.makedirs('data', exist_ok=True)
 # 			tif_writer.write(image_data.squeeze(), contiguous=True)
 # 	print(f"Session saved as {tiff_filename}")
 # 	return tiff_filename
-async def save_session_tiff(frames, session_start_time):
+async def save_session_tiff(frames, session_start_time, current_session_labels):
     tiff_filename = f'./data/session_{strftime("%Y%m%d_%H%M%S", localtime(session_start_time))}.tif'
+    np.save(f'./data/session_{strftime("%Y%m%d_%H%M%S", localtime(session_start_time))}.npy', current_session_labels)
     images = [Image.open(io.BytesIO(frame)) for frame in frames]
     images[0].save(tiff_filename, save_all=True, append_images=images[1:], bigtiff=True)
     print(f"Session saved as {tiff_filename}")
     return tiff_filename
 
 async def check_inactivity(terminate_event):
-	global current_session_frames, current_session_start_time, last_update_time, FINISHED_INIT
+	global current_session_frames, current_session_labels, current_session_start_time, last_update_time, FINISHED_INIT
 	while True:
 		await asyncio.sleep(1)
 		current_time = time()
 		if current_session_start_time and (current_time - last_update_time > INACTIVITY_TIMEOUT):
 			print(f"Session inactive for {INACTIVITY_TIMEOUT} seconds. Marking session as complete.")
-			tiff_filename = await save_session_tiff(current_session_frames, current_session_start_time)
+			tiff_filename = await save_session_tiff(current_session_frames, current_session_start_time, current_session_labels)
 			print('The total pages are: ', len(tifffile.TiffFile(tiff_filename).pages))
 			print('The shape of the tiff file is: ', tifffile.TiffFile(tiff_filename).asarray().shape)
-			await asyncio.get_event_loop().run_in_executor(None, caiman_process, tiff_filename, len(tifffile.TiffFile(tiff_filename).pages))
-			
+			await asyncio.get_event_loop().run_in_executor(None, caiman_process, tiff_filename, len(tifffile.TiffFile(tiff_filename).pages), False)			
 			FINISHED_INIT = True
 			terminate_event.set()  # Signal to terminate the main process
 			return
 
 async def callback(data_bytes, streamID, header):
-	global incoming_frames, current_session_frames, current_session_start_time, last_update_time
-
-	# Extract the header information
-	timestamp, frame_number, chunk_index, total_chunks = struct.unpack('>QHHH', data_bytes[:HEADER_SIZE])
+	global incoming_frames, current_session_frames, current_session_labels, current_session_start_time, last_update_time
+	# print("test")
+        # Extract the header information
+	timestamp, frame_number, chunk_index, total_chunks, label = struct.unpack('>QHHHd', data_bytes[:HEADER_SIZE])
 	chunk_data = data_bytes[HEADER_SIZE:]
 
 	frame = incoming_frames[frame_number]
 	frame["timestamp"] = timestamp
-
-	# Update the last update time
+	frame["label"] = label
+        # Update the last update time
 	last_update_time = time()
 
 	# Initialize session start time
@@ -111,7 +112,8 @@ async def callback(data_bytes, streamID, header):
 			# Reconstruct the frame
 			frame_data = b''.join(frame["chunks"])
 			current_session_frames.append(frame_data)
-			print(f"Frame {frame_number} completed and added to session.")
+			current_session_labels.append(label)
+			print(f"Frame {frame_number} completed and added to session, label is {label}.")
 			
 			# Clean up the completed frame entry
 			del incoming_frames[frame_number]
@@ -136,7 +138,7 @@ async def receive_then_init(terminate_event):
 		
 	await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
 		
-	receiver_id = await corelink.create_receiver("FentonRaw", "ws", alert=True, echo=True)
+	receiver_id = await corelink.create_receiver("FentonRaw1", "ws", alert=True, echo=True)
 		
 	print(f'Receiver ID: {receiver_id}')
 	print("Start receiving initilization frames")
