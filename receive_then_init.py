@@ -43,7 +43,7 @@ current_session_frames = []
 current_session_labels =[]
 current_session_start_time = None
 last_update_time = time()
-
+session_label_path = ""
 # Ensure the 'data' directory exists
 os.makedirs('data', exist_ok=True)
 
@@ -57,8 +57,10 @@ os.makedirs('data', exist_ok=True)
 # 	print(f"Session saved as {tiff_filename}")
 # 	return tiff_filename
 async def save_session_tiff(frames, session_start_time, current_session_labels):
+    global session_label_path
     tiff_filename = f'./data/session_{strftime("%Y%m%d_%H%M%S", localtime(session_start_time))}.tif'
-    np.save(f'./data/session_{strftime("%Y%m%d_%H%M%S", localtime(session_start_time))}.npy', current_session_labels)
+    session_label_path = f'./data/session_{strftime("%Y%m%d_%H%M%S", localtime(session_start_time))}.npy'
+    np.save(session_label_path, current_session_labels)
     images = [Image.open(io.BytesIO(frame)) for frame in frames]
     images[0].save(tiff_filename, save_all=True, append_images=images[1:], bigtiff=True)
     print(f"Session saved as {tiff_filename}")
@@ -74,7 +76,7 @@ async def check_inactivity(terminate_event):
 			tiff_filename = await save_session_tiff(current_session_frames, current_session_start_time, current_session_labels)
 			print('The total pages are: ', len(tifffile.TiffFile(tiff_filename).pages))
 			print('The shape of the tiff file is: ', tifffile.TiffFile(tiff_filename).asarray().shape)
-			await asyncio.get_event_loop().run_in_executor(None, caiman_process, tiff_filename, len(tifffile.TiffFile(tiff_filename).pages), False)			
+			await asyncio.get_event_loop().run_in_executor(None, caiman_process, tiff_filename, len(tifffile.TiffFile(tiff_filename).pages), False, session_label_path)			
 			FINISHED_INIT = True
 			terminate_event.set()  # Signal to terminate the main process
 			return

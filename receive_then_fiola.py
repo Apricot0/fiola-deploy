@@ -202,7 +202,7 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
 
     # Adjust frame_idx to account for the initialization frames
     adjusted_frame_idx = frame_idx + num_frames_init
-    print(adjusted_frame_idx)
+    # print(adjusted_frame_idx)
 
 
     try:
@@ -371,7 +371,7 @@ async def processing():
     await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
     await corelink.set_data_callback(callback)
     
-    receiver_id = await corelink.create_receiver("FentonRaw1", "ws", alert=True, echo=True)
+    receiver_id = await corelink.create_receiver("FentonRaw1", "ws",data_type="description1", alert=True, echo=True)
     logging.info(f"Receiver ID: {receiver_id}")
     
     logging.info("Start receive process frames")
@@ -381,7 +381,7 @@ async def processing():
     await corelink.set_server_callback(dropped, 'dropped')
 
     # await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
-    sender_id = await corelink.create_sender("FentonCtl1", "ws", "description1")
+    sender_id = await corelink.create_sender("FentonCtl1", "ws",data_type= "description2")
 
     try:
         while True:

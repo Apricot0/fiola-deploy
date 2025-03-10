@@ -244,9 +244,26 @@ def save_fiola_state(mc_nn_mov, trace_fiola, template, Ab, min_mov, params, file
 
 #%%    
 
+import numpy as np
+import logging
+
+def process_and_finetune(caiman_file, label_file=None, 
+                         weights_path="/persistent_storage/pre_trained_model.h5", 
+                         window_size=50, step_size=2, epochs=20, batch_size=32):
+    spike_activity = spikes_reader(caiman_file)
+    spike_activity = np.transpose(spike_activity)
+    if label_file is None:
+        labels = np.random.randint(0, 2, spike_activity.shape[0])
+        logging.info('No label detected during finetuning. Fake labels used.')
+    else:
+        labels = np.load(label_file)
+    if labels.shape[0] != spike_activity.shape[0]:
+        raise ValueError(f"Mismatch: labels shape {labels.shape} and spike_activity shape {spike_activity.shape}")
+    neurons = spike_activity.shape[1]
+    load_and_finetune_model(spike_activity, weights_path, window_size, step_size, epochs, batch_size, labels, neurons)
 # The main function wraper for generate_init_result.py. When it is being called by passing file name, it will run caiman intilization on that file and process it using fiola.
 # The final fiola initialization result will be saved to kubernetes persistent volume in calcium mode.
-def caiman_process(fnames, frames_to_process, local):
+def caiman_process(fnames, frames_to_process, local, label_file):
     mode = 'calcium'
     #folder = os.getenv('MOVIE_FOLDER', '/usr/src/app')
     # fnames = folder + '/test_sub.tif'
@@ -304,17 +321,9 @@ def caiman_process(fnames, frames_to_process, local):
     logging.info('Finished run caiman init')
     
     
-    #TODO: Fine-tuning the model **Labels** should be send together with frames during initailization
-    spike_activity = spikes_reader(caiman_file)
-    spike_activity = np.transpose(spike_activity)
-    weights_path = "/persistent_storage/pre_trained_model.h5"
-    window_size = 50
-    step_size = 2
-    epochs = 20
-    batch_size = 32
-    labels = np.random.randint(0, 2, spike_activity.shape[0])  # PLACE HOLDER
-    neurons = spike_activity.shape[1]
-    load_and_finetune_model(spike_activity, weights_path, window_size, step_size, epochs, batch_size, labels, neurons)
+    #Fine-tuning the model **Labels** should be send together with frames during initailization
+    
+    process_and_finetune(caiman_file, label_file=label_file)
     #-----------------------------------------------------------------------------------------------------------------
     
     # Apply fiola processing on the CaImAn initilaizaiton file
