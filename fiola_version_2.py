@@ -188,10 +188,18 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
     # First, asynchronously load the TIFF image (I/O-bound)
     memmap_image = await memmap_from_buffer(frame_data)
     # Then offload heavy CPU-bound processing to a separate thread.
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(
-        None,  # Default executor (ThreadPool)
-        process_frame_cpu_bound,
+    # loop = asyncio.get_running_loop()
+    # await loop.run_in_executor(
+    #     None,  # Default executor (ThreadPool)
+    #     process_frame_cpu_bound,
+    #     fio,
+    #     memmap_image,
+    #     frame_idx,
+    #     timestamp,
+    #     local,
+    #     model
+    # )
+    process_frame_cpu_bound(
         fio,
         memmap_image,
         frame_idx,
@@ -225,7 +233,8 @@ def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, mode
     fio.fit_online_frame(memmap_image)
     trace_now = fio.pipeline.saoz.trace[:, adjusted_frame_idx: adjusted_frame_idx + batch]
     trace_window = fio.pipeline.saoz.trace_deconvolved[:, adjusted_frame_idx + batch - window_size: adjusted_frame_idx + batch]
-    prediction = [[0]]
+    # prediction = [[0]]
+    prediction = model.predict(np.expand_dims( np.transpose(trace_window), axis=0))
     logging.info(f"inference: {prediction[0][0]}")
 
     # Update the online traces
