@@ -252,7 +252,10 @@ def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, mode
 
     async def send_predictions():
         await corelink.send(sender_id, f'Processed frame {frame_idx} with inference: {prediction[0][0]} using {total_time}')
-        await corelink.send(sender_id_led,f'{prediction[0][0]}')
+        if prediction[0][0] > 0.5: 
+            await corelink.send(sender_id_led,f'1') 
+        else:
+            await corelink.send(sender_id_led,f'0')
 
     if not local:
         asyncio.run_coroutine_threadsafe(send_predictions(), main_loop)
