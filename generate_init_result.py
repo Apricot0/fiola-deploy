@@ -18,7 +18,7 @@ from fiola.fiola import FIOLA
 from fiola.utilities import download_demo, load, to_2D, movie_iterator
 import sys
 from LSTM_Processing.model_creator import load_and_finetune_model, spikes_reader, train_model_from_scratch_with_kfold
-from config import num_frames_total, num_frames_init, use_pretrained
+from config import num_frames_total, num_frames_init, use_pretrained, use_existing_caiman_init
 import tensorflow as tf
 tf.debugging.set_log_device_placement(True)
 
@@ -316,7 +316,11 @@ def caiman_process(fnames, frames_to_process, local, label_file):
     print(tf.test.gpu_device_name())
 
     # Generating CaImAn initialization file
-    caiman_file = run_caiman_init(fnames_init, pw_rigid=True, max_shifts=ms, gnb=nb, rf=15, K=4, gSig=[3, 3])
+    if use_existing_caiman_init:
+        logging.info('Using existing caiman initialization file')
+        caiman_file = use_existing_caiman_init
+    else:
+        caiman_file = run_caiman_init(fnames_init, pw_rigid=True, max_shifts=ms, gnb=nb, rf=15, K=4, gSig=[3, 3])
     logging.info(caiman_file)
     cnm2 = cm.source_extraction.cnmf.cnmf.load_CNMF(caiman_file)
     estimates = cnm2.estimates
