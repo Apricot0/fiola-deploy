@@ -51,6 +51,11 @@ class NeuralSpikeLSTM:
         new_model = NeuralSpikeLSTM(new_neurons, self.window_size)
         new_model.model.load_weights(weights_path, by_name=True, skip_mismatch=True)
         self.model = new_model.model  
+    
+    def evaluate(self, X_val, y_val):
+        loss, accuracy = self.model.evaluate(X_val, y_val, verbose=0)
+        print(f"Validation Loss: {loss:.4f}, Accuracy: {accuracy:.4f}")
+        return loss, accuracy
 
 def get_max_neurons(file_list):
     """
