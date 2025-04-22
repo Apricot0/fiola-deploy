@@ -151,6 +151,80 @@ def load_and_finetune_model(spike_activity, weights_path, window_size, step_size
     print(f"Fine-tuned model saved to {fine_tuned_weights_path}")
     
     return model
+def train_model_from_scratch(spike_activity, window_size, step_size, epochs, batch_size, labels, neurons):
+    """
+    Trains a new LSTM model from scratch using spike activity and labels.
+
+    Args:
+        spike_activity: Array of spike activity from CaImAn or similar.
+        window_size: Size of the sliding window.
+        step_size: Step size between sliding windows.
+        epochs: Number of training epochs.
+        batch_size: Training batch size.
+        labels: Ground truth labels (light=1, dark=0).
+    
+    Returns:
+        model: Trained LSTM model.
+    """
+    X, y = create_sliding_windows(spike_activity, labels, window_size, step_size)
+    model = NeuralSpikeLSTM(neurons, window_size)
+
+    model.train(X, y, epochs=epochs, batch_size=batch_size)
+
+    trained_weights_path = "/persistent_storage/trained_model_from_scratch.h5"
+    model.save_model(trained_weights_path)
+    print(f"Trained model saved to {trained_weights_path}")
+
+    return model
+
+def train_model_from_scratch_with_kfold(spike_activity, window_size, step_size, epochs, batch_size, labels, neurons, k_folds=5):
+    """
+    Trains an LSTM model using K-Fold cross-validation and returns the best-performing model.
+
+    Args:
+        spike_activity: Array of spike activity (frames x neurons).
+        window_size: Size of the sliding window.
+        step_size: Step between windows.
+        epochs: Number of training epochs.
+        batch_size: Training batch size.
+        labels: Binary labels for supervised training (light=1, dark=0).
+        k_folds: Number of folds for cross-validation.
+
+    Returns:
+        best_model: The model with the highest validation accuracy.
+    """
+    X, y = create_sliding_windows(spike_activity, labels, window_size, step_size)
+    X, y = np.array(X), np.array(y)
+
+    kf = KFold(n_splits=k_folds, shuffle=True, random_state=42)
+    best_model = None
+    best_accuracy = -1.0
+
+    for fold, (train_idx, val_idx) in enumerate(kf.split(X)):
+        print(f"\n--- Fold {fold + 1}/{k_folds} ---")
+
+        X_train, X_val = X[train_idx], X[val_idx]
+        y_train, y_val = y[train_idx], y[val_idx]
+
+        model = NeuralSpikeLSTM(neurons, window_size)
+        model.train(X_train, y_train, epochs=epochs, batch_size=batch_size)
+
+        val_accuracy = model.evaluate(X_val, y_val)
+        print(f"Fold {fold + 1} Validation Accuracy: {val_accuracy:.4f}")
+
+        model_path = "/persistent_storage/trained_model_from_scratch.h5"
+        model.save_model(model_path)
+        print(f"Model for fold {fold + 1} saved to {model_path}")
+
+        # Update best model
+        if val_accuracy > best_accuracy:
+            best_accuracy = val_accuracy
+            best_model = model
+            model_path = f"trained_model_fold{fold + 1}.h5"
+            model.save_model(model_path)
+            print(f"New best model found at fold {fold + 1} with accuracy {best_accuracy:.4f}")
+
+    return best_model
 def load_and_merge_spike_data(light_file, dark_file, max_neurons):
     """
     merge 1 animal's spks and add give them labels, sorted them according to timestamp. 

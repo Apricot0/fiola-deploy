@@ -23,6 +23,7 @@ from fiola.utilities import visualize
 import numpy as np
 from LSTM_Processing.model_creator import NeuralSpikeLSTM
 import functools
+from config import num_frames_init, num_frames_total, use_pretrained
 
 warnings.filterwarnings("ignore", message="no queue or thread to delete")
 
@@ -46,10 +47,6 @@ def log_time_async(func):
         logging.info(f"{func.__name__} took {elapsed:.6f}s")
         return result
     return wrapper
-
-# Global variables and configuration
-num_frames_init = 500 
-num_frames_total = 2000
 batch = 1  # Number of frames processed at a time
 time_per_step = []
 online_trace = None
@@ -450,10 +447,35 @@ def parse_arguments():
         action="store_true",
         help="Run the script in local test mode with synthetic data."
     )
+    # parser.add_argument(
+    #     "-if", "--initial-frames",
+    #     type=int,
+    #     default=500,
+    #     help="Number of initial frames to use."
+    # )
+    # parser.add_argument(
+    #     "-tf", "--total-frames",
+    #     type=int,
+    #     default=2000,
+    #     help="Total number of frames to process."
+    # )
+    # parser.add_argument(
+    #     "-up", "--use-pretrained",
+    #     action="store_true",
+    #     help="Use a pretrained model if available."
+    # )
+    
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_arguments()
+    logging.info(f"Using pretrained model: {use_pretrained}")
+    logging.info(f"Initial frames: {num_frames_init}")
+    logging.info(f"Total frames: {num_frames_total}")
+    if num_frames_init > num_frames_total:
+        logging.error("Initial frames cannot be greater than total frames.")
+        sys.exit(1)
+    
     if args.local_test:
         logging.info("Running in local test mode.")
         asyncio.run(local_test())
