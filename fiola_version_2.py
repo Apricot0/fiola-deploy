@@ -240,12 +240,13 @@ def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, mode
     total_time = end_time - (timestamp / 1000)  # Convert timestamp to seconds
     logging.info(f"Total time spent on frame {frame_idx} (from capture to finish): {total_time}, processing time: {end_time - start_time}")
 
+    async def send_predictions():
+        await corelink.send(sender_id, f'Processed frame {frame_idx} with inference: {prediction[0][0]} using {total_time}')
+        await corelink.send(sender_id_led, prediction[0][0])
+
     if not local:
-         asyncio.run_coroutine_threadsafe(
-             corelink.send(sender_id, f'Processed frame {frame_idx} with inference: {prediction[0][0]} using {total_time}'),
-             corelink.send(sender_id_led, prediction[0][0]),
-             main_loop
-         )
+        asyncio.run_coroutine_threadsafe(send_predictions(), main_loop)
+
 
 @log_time_async
 async def callback(data_bytes, streamID, header):
