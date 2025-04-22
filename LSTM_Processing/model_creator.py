@@ -214,7 +214,7 @@ def train_model_from_scratch_with_kfold(spike_activity, window_size, step_size, 
         model = NeuralSpikeLSTM(neurons, window_size)
         model.train(X_train, y_train, epochs=epochs, batch_size=batch_size)
 
-        val_accuracy = model.evaluate(X_val, y_val)
+        val_loss, val_accuracy = model.evaluate(X_val, y_val)
         print(f"Fold {fold + 1} Validation Accuracy: {val_accuracy:.4f}")
 
         model_path = "/persistent_storage/trained_model_from_scratch.h5"

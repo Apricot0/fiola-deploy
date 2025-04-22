@@ -79,7 +79,7 @@ incoming_frames = defaultdict(lambda: {
 os.makedirs('results', exist_ok=True)
 
 LATEST_FIOLA_STATE_PATH = '/persistent_storage/latest_fiola_state.pkl'
-LATEST_FINE_TUNED_MODEL_PATH = '/persistent_storage/fine_turned_model.h5'
+LATEST_FINE_TUNED_MODEL_PATH = '/persistent_storage/trained_model_from_scratch.h5'
 fio_objects = []
 
 @log_time_sync
@@ -326,7 +326,7 @@ async def processing():
             logging.error(f"Failed to generate the latest FIOLA state file path at {LATEST_FIOLA_STATE_PATH}")
             sys.exit(1)
    
-    model = NeuralSpikeLSTM.load_trained_model()
+    model = NeuralSpikeLSTM.load_trained_model(file_path = LATEST_FINE_TUNED_MODEL_PATH )
     await corelink.set_server_callback(update, 'update')
     await corelink.set_server_callback(stale, 'stale')
     await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
