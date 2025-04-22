@@ -24,7 +24,8 @@ import numpy as np
 from LSTM_Processing.model_creator import NeuralSpikeLSTM
 import functools
 from config import num_frames_init, num_frames_total, use_pretrained
-
+import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
 warnings.filterwarnings("ignore", message="no queue or thread to delete")
 
 # Define timing decorators for synchronous and asynchronous functions
@@ -197,10 +198,11 @@ async def process_frame_with_buffer(fio, frame_data, frame_idx, timestamp, proce
         frame_idx,
         timestamp,
         local,
-        model
+        model,
+        tf_graph
     )
 
-def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, model):
+def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, model, tf_graph):
     global online_trace, online_trace_deconvolved
 
     adjusted_frame_idx = frame_idx + num_frames_init
@@ -225,7 +227,10 @@ def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, mode
     fio.fit_online_frame(memmap_image)
     trace_now = fio.pipeline.saoz.trace[:, adjusted_frame_idx: adjusted_frame_idx + batch]
     trace_window = fio.pipeline.saoz.trace_deconvolved[:, adjusted_frame_idx + batch - window_size: adjusted_frame_idx + batch]
-    prediction = [[0]]
+    with tf_graph.as_default():
+        prediction = model.predict(np.expand_dims(np.transpose(trace_window), axis=0))
+    
+    #prediction = [[0]]
     logging.info(f"inference: {prediction[0][0]}")
 
     # Update the online traces
@@ -242,7 +247,7 @@ def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, mode
 
     async def send_predictions():
         await corelink.send(sender_id, f'Processed frame {frame_idx} with inference: {prediction[0][0]} using {total_time}')
-        await corelink.send(sender_id_led, prediction[0][0])
+        await corelink.send(sender_id_led,f'{prediction[0][0]}')
 
     if not local:
         asyncio.run_coroutine_threadsafe(send_predictions(), main_loop)
@@ -300,7 +305,7 @@ async def dropped(response, key):
 
 @log_time_async
 async def processing():
-    global fio_objects, sender_id,sender_id_led, model, main_loop
+    global fio_objects, sender_id,sender_id_led, model, main_loop, tf_graph
     main_loop = asyncio.get_running_loop()
     if os.path.exists(LATEST_FIOLA_STATE_PATH):
         with open(LATEST_FIOLA_STATE_PATH, 'r') as f:
@@ -329,6 +334,7 @@ async def processing():
             sys.exit(1)
    
     model = NeuralSpikeLSTM.load_trained_model(file_path = LATEST_FINE_TUNED_MODEL_PATH )
+    tf_graph = tf.get_default_graph()
     await corelink.set_server_callback(update, 'update')
     await corelink.set_server_callback(stale, 'stale')
     await corelink.connect("Testuser", "Testpassword", "corelink.hpc.nyu.edu", 20012)
