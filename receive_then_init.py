@@ -107,7 +107,7 @@ async def callback(data_bytes, streamID, header):
 	if chunk_index < total_chunks and frame["chunks"][chunk_index] is None:
 		frame["chunks"][chunk_index] = chunk_data
 		frame["received_slices"] += 1
-		print(f"Received slice {chunk_index} for frame {frame_number}")
+    		#print(f"Received slice {chunk_index} for frame {frame_number}")
 
 		# Check if we have received all chunks for this frame
 		if frame["received_slices"] == total_chunks:
