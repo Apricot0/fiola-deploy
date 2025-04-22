@@ -243,6 +243,7 @@ def process_frame_cpu_bound(fio, memmap_image, frame_idx, timestamp, local, mode
     if not local:
          asyncio.run_coroutine_threadsafe(
              corelink.send(sender_id, f'Processed frame {frame_idx} with inference: {prediction[0][0]} using {total_time}'),
+             corelink.send(sender_id_led, prediction[0][0]),
              main_loop
          )
 
@@ -298,7 +299,7 @@ async def dropped(response, key):
 
 @log_time_async
 async def processing():
-    global fio_objects, sender_id, model, main_loop
+    global fio_objects, sender_id,sender_id_led, model, main_loop
     main_loop = asyncio.get_running_loop()
     if os.path.exists(LATEST_FIOLA_STATE_PATH):
         with open(LATEST_FIOLA_STATE_PATH, 'r') as f:
@@ -341,6 +342,7 @@ async def processing():
     await corelink.set_server_callback(subscriber, 'subscriber')
     await corelink.set_server_callback(dropped, 'dropped')
     sender_id = await corelink.create_sender("FentonRaw1", "ws", data_type="description2")
+    sender_id_led = await corelink.create_sender("FentonResult", "ws", data_type="led")
     try:
         while True:
             await asyncio.sleep(3600)
